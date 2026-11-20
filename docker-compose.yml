@@ -1,0 +1,24 @@
+services:
+  aws-emulator:
+    build:
+      context: ./services/aws-emulator
+      dockerfile: Dockerfile
+      args:
+        ARCH: ${ARCH:-x86_64}
+    container_name: aws-emulator
+    # Run as root inside the container to avoid WSL2 / Windows volume permission errors
+    # (os error 13: Permission denied) when creating certificates and credentials
+    user: "0:0"
+    ports:
+      - "127.0.0.1:${PORT:-9297}:${PORT:-9297}"
+    command:
+      - "-p"
+      - "${PORT:-9297}"
+    environment:
+      - HOME=/home/emulator
+      - EMULATOR_TELEMETRY=off
+    volumes:
+      # Persists generated certificates (ca.pem), configs, and credentials
+      # within the service's dedicated data directory
+      - ./services/aws-emulator/data:/home/emulator/.aws/emulator
+    restart: unless-stopped
