@@ -6,8 +6,7 @@ services:
       args:
         ARCH: ${ARCH:-x86_64}
     container_name: aws-emulator
-    # Run as root inside the container to avoid WSL2 / Windows volume permission errors
-    # (os error 13: Permission denied) when creating certificates and credentials
+    # Run as root inside container to avoid WSL2 / Windows volume permission errors
     user: "0:0"
     ports:
       - "127.0.0.1:${PORT:-9297}:${PORT:-9297}"
@@ -18,7 +17,25 @@ services:
       - HOME=/home/emulator
       - EMULATOR_TELEMETRY=off
     volumes:
-      # Persists generated certificates (ca.pem), configs, and credentials
-      # within the service's dedicated data directory
       - ./services/aws-emulator/data:/home/emulator/.aws/emulator
+    restart: unless-stopped
+
+  dynamodb-app:
+    build:
+      context: ./services/dynamodb-app
+      dockerfile: Dockerfile
+    container_name: dynamodb-app
+    ports:
+      # Exposes the React + Node DynamoDB Studio UI on http://localhost:3000
+      - "127.0.0.1:3000:3000"
+    environment:
+      - PORT=3000
+      - AWS_ENDPOINT_URL=https://aws-emulator:9297
+      - AWS_DEFAULT_REGION=us-east-1
+      - NODE_TLS_REJECT_UNAUTHORIZED=0
+    volumes:
+      # Mounts the emulator's generated credentials and certificates (read-only)
+      - ./services/aws-emulator/data:/home/emulator/.aws/emulator:ro
+    depends_on:
+      - aws-emulator
     restart: unless-stopped

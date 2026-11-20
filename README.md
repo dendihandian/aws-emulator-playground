@@ -7,60 +7,77 @@ Based on the official AWS documentation:
 
 ---
 
-## Purpose & Architecture
-
-This playground provides a containerized **AWS Emulator** runtime and a scalable structure to add companion services (backend APIs, worker services, Lambda handlers, web apps, etc.) that interact directly with the emulated AWS cloud locally.
-
-### Project Structure
+## Services in this Playground
 
 ```text
 aws-emulator-playground/
-├── docker-compose.yml              <-- Orchestrates all services
-├── .env.example                    <-- Default environment configurations
+├── docker-compose.yml                  <-- Orchestrates all services
+├── .env.example
 ├── README.md
 └── services/
-    ├── aws-emulator/               <-- Core AWS API Emulator
+    ├── aws-emulator/                   <-- Official AWS API Emulator runtime
     │   ├── Dockerfile
-    │   └── data/                   <-- Auto-generated ca.pem, config, credentials
-    └── [your-service-here]/        <-- Add companion services to interact with the emulator
+    │   └── data/                       <-- Auto-generated ca.pem, config, credentials
+    │
+    └── dynamodb-app/                   <-- React + Node Web App to manage DynamoDB
+        ├── Dockerfile
+        ├── server.js                   <-- Express + AWS SDK v3 client backend
+        ├── package.json
+        └── src/                        <-- React 18 single-page application
 ```
 
 ---
 
 ## Quick Start
 
-### 1. Build and Start the Stack
+### 1. Build and Start the Entire Stack
+
+From the root directory, run:
 
 ```cmd
-docker-compose up -d --build
+docker compose up -d --build
 ```
-*(or `docker compose up -d --build`)*
 
-### 2. Verify Status & Live Logs
+This starts both:
+1. **AWS Emulator** listening on `https://127.0.0.1:9297`
+2. **DynamoDB Web Studio** listening on `http://localhost:3000`
+
+---
+
+### 2. Open the DynamoDB Web App
+
+Open your browser and navigate to:
+
+👉 **[http://localhost:3000](http://localhost:3000)**
+
+#### Features in the Web App:
+- **Status Indicator:** Shows live connection status and latency to the AWS Emulator.
+- **⚡ Seed Sample Data:** 1-click button to create a `Products` table pre-populated with 5 records.
+- **Table Management:** Create new tables (Partition Key, Sort Key, on-demand billing), delete tables.
+- **Record Management:** Browse table items, filter records, insert new items (via visual form or raw JSON), view full item JSON, and delete items.
+
+---
+
+### 3. Verify Status & Logs via Terminal
 
 ```cmd
 # Check container status
-docker-compose ps
+docker compose ps
 
-# Stream emulator logs
-docker-compose logs -f aws-emulator
-```
+# Stream AWS Emulator logs
+docker compose logs -f aws-emulator
 
-### 3. Verify Health Check Endpoint
-
-```cmd
-curl -k https://127.0.0.1:9297/__admin/health
+# Stream DynamoDB Web App logs
+docker compose logs -f dynamodb-app
 ```
 
 ---
 
-## Interacting with the Emulator
-
-### Method 1: From Your Host Machine (AWS CLI & SDKs)
+## Interacting with the Emulator from Host (CLI & SDKs)
 
 When `aws-emulator` boots, it generates credentials and a self-signed TLS CA certificate in `./services/aws-emulator/data/9297/`.
 
-#### Windows (Command Prompt / `cmd`)
+### Windows (Command Prompt / `cmd`)
 ```cmd
 set AWS_ENDPOINT_URL=https://127.0.0.1:9297
 set AWS_DEFAULT_REGION=us-east-1
@@ -71,10 +88,10 @@ set AWS_EC2_METADATA_DISABLED=true
 set AWS_DISABLE_HOST_PREFIX_INJECTION=true
 
 # Test with AWS CLI
-aws s3 ls
+aws dynamodb list-tables
 ```
 
-#### Windows (PowerShell)
+### Windows (PowerShell)
 ```powershell
 $env:AWS_ENDPOINT_URL="https://127.0.0.1:9297"
 $env:AWS_DEFAULT_REGION="us-east-1"
@@ -85,47 +102,15 @@ $env:AWS_EC2_METADATA_DISABLED="true"
 $env:AWS_DISABLE_HOST_PREFIX_INJECTION="true"
 
 # Test with AWS CLI
-aws s3 ls
+aws dynamodb list-tables
 ```
-
----
-
-### Method 2: Adding & Connecting Another Service
-
-You can add your own service (e.g., `services/my-api/`) and attach it to `docker-compose.yml`.
-
-Because the emulator generates TLS certificates explicitly bound to `127.0.0.1` and `localhost`, companion containers can either:
-
-1. **Share the network namespace (`network_mode: service:aws-emulator`)** — *Recommended*:
-   Allows your application to reach the emulator directly via `https://127.0.0.1:9297` with zero TLS hostname mismatch errors.
-
-   ```yaml
-   services:
-     aws-emulator:
-       # ... (defined in docker-compose.yml)
-
-     my-app:
-       build:
-         context: ./services/my-app
-         dockerfile: Dockerfile
-       depends_on:
-         - aws-emulator
-       network_mode: service:aws-emulator
-       environment:
-         - AWS_ENDPOINT_URL=https://127.0.0.1:9297
-         - AWS_DEFAULT_REGION=us-east-1
-         - AWS_CA_BUNDLE=/home/emulator/.aws/emulator/9297/ca.pem
-         - AWS_SHARED_CREDENTIALS_FILE=/home/emulator/.aws/emulator/9297/emulator_credentials
-       volumes:
-         - ./services/aws-emulator/data:/home/emulator/.aws/emulator:ro
-   ```
 
 ---
 
 ## Stopping the Playground
 
 ```cmd
-docker-compose down
+docker compose down
 ```
 
-> **Note:** The AWS Emulator keeps all emulated resources (S3 buckets, SQS queues, DynamoDB tables, etc.) in memory. Stopping or restarting the container resets the state and generates fresh credentials and certificates.
+> **Note:** The AWS Emulator keeps all emulated resources (DynamoDB tables, items, S3 buckets, etc.) in memory. Stopping or restarting the container resets the state and generates fresh credentials and certificates.
