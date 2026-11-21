@@ -18,6 +18,14 @@ services:
       - EMULATOR_TELEMETRY=off
     volumes:
       - ./services/aws-emulator/data:/home/emulator/.aws/emulator
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 2G
+        reservations:
+          cpus: "0.5"
+          memory: 512M
     restart: unless-stopped
 
   dynamodb-app:
@@ -36,6 +44,14 @@ services:
     volumes:
       # Mounts the emulator's generated credentials and certificates (read-only)
       - ./services/aws-emulator/data:/home/emulator/.aws/emulator:ro
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+        reservations:
+          cpus: "0.2"
+          memory: 128M
     depends_on:
       - aws-emulator
     restart: unless-stopped

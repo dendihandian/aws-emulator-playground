@@ -28,6 +28,20 @@ aws-emulator-playground/
 
 ---
 
+## Allocated Docker Resources
+
+This playground configures explicit resource limits and reservations in `docker-compose.yml` to ensure predictable local execution and prevent runaway memory usage:
+
+| Service | CPU Reservation | CPU Limit | Memory Reservation | Memory Limit | Purpose & Rationale |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **`aws-emulator`** | `0.5` | `2.0` | `512 MB` | **`2.0 GB`** | Matches official AWS documentation (`--memory=2g`). Stores emulated state (DynamoDB tables, items, S3 objects, SQS messages) purely in RAM. |
+| **`dynamodb-app`** | `0.2` | `1.0` | `128 MB` | **`512 MB`** | Lightweight Node.js/Express API server and static React 18 dashboard assets. |
+| **Total Stack** | **`~0.7`** | **`3.0`** | **`~640 MB`** | **`~2.5 GB`** | Recommended minimum host/WSL free memory: at least 4 GB. |
+
+> **Customization:** If you are running on a machine with limited memory, you can adjust these allocations under the `deploy.resources` section in [docker-compose.yml](./docker-compose.yml).
+
+---
+
 ## Quick Start
 
 ### 1. Build and Start the Entire Stack
